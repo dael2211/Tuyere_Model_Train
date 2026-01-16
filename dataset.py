@@ -19,6 +19,7 @@ class CombustionChamberDataset(BaseDataset):
         self.preprocessing = preprocessing
 
         self.ids = os.listdir(images_dir)
+        self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
         if masks_dir:
             self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
         else:
