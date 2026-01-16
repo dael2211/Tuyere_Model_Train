@@ -6,6 +6,7 @@ import numpy as np
 import yaml
 import argparse
 import onnxruntime as ort
+import cv2
 from visualize import visualize_masks
 from utils import create_test_run_dir
 from dataset import CombustionChamberDataset
@@ -156,4 +157,3 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     main(args.model_path, args.dataset_dir)
-
