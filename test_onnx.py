@@ -150,9 +150,6 @@ if __name__ == "__main__":
         "--model_path", type=str, required=True, help="Full path to the ONNX model file."
     )
     parser.add_argument(
-        "--config_path", type=str, required=True, help="Full path to the training config.yaml file."
-    )
-    parser.add_argument(
         "--dataset_dir", type=str, required=True, help="Full path to the test dataset directory."
     )
     args = parser.parse_args()
