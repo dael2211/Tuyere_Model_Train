@@ -1,0 +1,44 @@
+# data folder, runs, aux scripts
+data/
+runs/
+runs_test/
+scripts/
+
+# pyCharm IDE settings
+.idea/
+
+# logs and temporary files
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.npy
+*.sh
+*.txt
+*.csv
+*.json
+*.pickle
+*.pkl
+*.h5
+*.ckpt
+*.pt
+*.onnx
+*.zip
+*.tar.gz
+*.tar.gz
+*.yml
+*.yaml
+*.png
+*.jpg
+*.npy
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ignore large arrays
+*.npy
+hef_conversion/*.npy
