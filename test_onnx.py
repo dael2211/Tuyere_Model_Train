@@ -3,7 +3,6 @@ import torch
 from torch.utils.data import DataLoader
 from torchmetrics.classification import Dice, MulticlassF1Score, MulticlassJaccardIndex, ConfusionMatrix
 import numpy as np
-import yaml
 import argparse
 import onnxruntime as ort
 import cv2
@@ -11,6 +10,30 @@ from visualize import visualize_masks
 from utils import create_test_run_dir
 from dataset import CombustionChamberDataset
 from augmentation import get_validation_augmentation
+
+
+def get_num_classes(masks_dir):
+    """
+    Determines the number of classes by finding the maximum pixel value in the mask images.
+    Assumes masks are grayscale images where pixel values correspond to class indices.
+    """
+    max_val = 0
+    if not os.path.exists(masks_dir):
+        print(f"Warning: Mask directory not found at {masks_dir}. Assuming 1 class and no metrics for masks.")
+        return 1
+
+    mask_files = [f for f in os.listdir(masks_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+    if not mask_files:
+        print(f"Warning: No masks found in {masks_dir}. Assuming 1 class and no metrics for masks.")
+        return 1
+
+    for mask_file in mask_files:
+        mask_path = os.path.join(masks_dir, mask_file)
+        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        if mask is not None:
+            max_val = max(max_val, mask.max())
+    # Number of classes is max_val + 1 (e.g., if max is 0, there's 1 class; if 1, 2 classes)
+    return max_val + 1
 
 
 def main(model_path, config_path):
@@ -24,9 +47,11 @@ def main(model_path, config_path):
     test_images_dir = os.path.join(pwd, "data", "Tuyere_ds_v3_test_set", "test_images")
     test_masks_dir = os.path.join(pwd, "data", "Tuyere_ds_v3_test_set", "test_masks")
 
+    # Dynamically determine the number of classes
+    num_classes = get_num_classes(test_masks_dir)
+
     # read parameters from config
     batch_size = config["training"]["batch_size"]
-    num_classes = len(config["dataset"]["classes"])
     mean = config["dataset"].get("mean", [0.485, 0.456, 0.406])
     std = config["dataset"].get("std", [0.229, 0.224, 0.225])
 
