@@ -6,6 +6,7 @@ import numpy as np
 import argparse
 import onnxruntime as ort
 import cv2
+import yaml
 from visualize import visualize_masks
 from utils import create_test_run_dir
 from dataset import CombustionChamberDataset
@@ -36,35 +37,34 @@ def get_num_classes(masks_dir):
     return max_val + 1
 
 
-def main(model_path, config_path):
-    # relative paths
-    pwd = os.getcwd()
+def main(model_path, dataset_dir):
+    # No longer using a config file for ONNX test
+    # All necessary paths and parameters will be derived or set directly
 
-    # load configuration
-    with open(config_path, "r") as file:
-        config = yaml.safe_load(file)
-
-    test_images_dir = os.path.join(pwd, "data", "Tuyere_ds_v3_test_set", "test_images")
-    test_masks_dir = os.path.join(pwd, "data", "Tuyere_ds_v3_test_set", "test_masks")
+    test_images_dir = os.path.join(dataset_dir, "test_images")
+    test_masks_dir = os.path.join(dataset_dir, "test_masks")
 
     # Dynamically determine the number of classes
     num_classes = get_num_classes(test_masks_dir)
+    classes = [str(i) for i in range(num_classes)]  # Define classes based on num_classes
 
-    # read parameters from config
-    batch_size = config["training"]["batch_size"]
-    mean = config["dataset"].get("mean", [0.485, 0.456, 0.406])
-    std = config["dataset"].get("std", [0.229, 0.224, 0.225])
+    # Set parameters directly
+    batch_size = 1  # Set batch size to 1 for testing, or can be a parameter
+    mean = [0.485, 0.456, 0.406]  # Standard ImageNet mean
+    std = [0.229, 0.224, 0.225]   # Standard ImageNet std
 
     # setup test run directories
     test_run_dir = create_test_run_dir()
     results_dir = os.path.join(test_run_dir, "results")
+    predicted_masks_dir = os.path.join(test_run_dir, "predicted_masks")  # Define predicted_masks_dir
     os.makedirs(results_dir, exist_ok=True)
+    os.makedirs(predicted_masks_dir, exist_ok=True)  # Create the directory
 
     # prepare dataset and dataloader
     test_dataset = CombustionChamberDataset(
         images_dir=test_images_dir,
         masks_dir=test_masks_dir,
-        classes=config["dataset"]["classes"],
+        classes=classes,
         augmentation=get_validation_augmentation(mean=mean, std=std)
     )
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -104,14 +104,6 @@ def main(model_path, config_path):
             # Save predicted mask as an image
             for i in range(preds.size(0)):
                 # Get original filename to save the mask with the same name
-                original_filename = os.path.basename(test_dataset.ids[idx * batch_size + i])
-                mask_save_path = os.path.join(predicted_masks_dir, original_filename)
-
-                pred_mask_image = preds[i].cpu().numpy().astype(np.uint8)
-                cv2.imwrite(mask_save_path, pred_mask_image)
-
-            # Save predicted mask as an image
-            for i in range(preds.size(0)):
                 original_filename = os.path.basename(test_dataset.ids[idx * batch_size + i])
                 mask_save_path = os.path.join(predicted_masks_dir, original_filename)
 
