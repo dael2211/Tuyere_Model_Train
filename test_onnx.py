@@ -85,6 +85,14 @@ def main(model_path, config_path):
                 pred_mask_image = preds[i].cpu().numpy().astype(np.uint8)
                 cv2.imwrite(mask_save_path, pred_mask_image)
 
+            # Save predicted mask as an image
+            for i in range(preds.size(0)):
+                original_filename = os.path.basename(test_dataset.ids[idx * batch_size + i])
+                mask_save_path = os.path.join(predicted_masks_dir, original_filename)
+
+                pred_mask_image = preds[i].cpu().numpy().astype(np.uint8)
+                cv2.imwrite(mask_save_path, pred_mask_image)
+
             # store masks for metrics
             all_true_masks.append(true_masks.cpu().numpy())
             all_pred_masks.append(preds.cpu().numpy())

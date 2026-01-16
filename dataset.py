@@ -19,8 +19,6 @@ class CombustionChamberDataset(BaseDataset):
         self.images_dir = images_dir
         self.masks_dir = masks_dir
         self.classes = classes
-        self.ids = [os.path.join(images_dir, f) for f in os.listdir(images_dir) if not f.startswith('.')]
-        self.ids = [os.path.join(images_dir, f) for f in os.listdir(images_dir) if not f.startswith('.')]
         self.mean = mean
         self.std = std
         self.augmentation = augmentation
