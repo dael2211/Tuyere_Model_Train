@@ -4,6 +4,7 @@ import cv2
 import inspect
 import logging
 import sys
+import torch
 
 def create_experiment_directory(base_dir='../runs'):
     """
@@ -169,3 +170,32 @@ def denormalize(image, mean, std):
     denormalized_image = denormalized_image.transpose(1, 2, 0)
     return denormalized_image
 
+def get_dataset_stats(images_dir):
+    """
+    Calculate mean and std of a dataset.
+
+    Args:
+        images_dir (str): Path to the directory containing images.
+
+    Returns:
+        tuple: (mean, std)
+    """
+    image_files = [os.path.join(images_dir, f) for f in os.listdir(images_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+
+    # Uninitialized tensors for pixel values
+    r_pixels, g_pixels, b_pixels = torch.tensor([]), torch.tensor([]), torch.tensor([])
+
+    for image_path in image_files:
+        image = cv2.imread(image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        # Separate channels and normalize to [0, 1]
+        r, g, b = image[:,:,0], image[:,:,1], image[:,:,2]
+        r_pixels = torch.cat((r_pixels, torch.tensor(r.flatten() / 255.0, dtype=torch.float32)), 0)
+        g_pixels = torch.cat((g_pixels, torch.tensor(g.flatten() / 255.0, dtype=torch.float32)), 0)
+        b_pixels = torch.cat((b_pixels, torch.tensor(b.flatten() / 255.0, dtype=torch.float32)), 0)
+
+    mean = (r_pixels.mean().item(), g_pixels.mean().item(), b_pixels.mean().item())
+    std = (r_pixels.std().item(), g_pixels.std().item(), b_pixels.std().item())
+
+    return mean, std
