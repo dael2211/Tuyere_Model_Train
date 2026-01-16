@@ -29,37 +29,20 @@ class CombustionChamberDataset(BaseDataset):
         self.augmentation = augmentation
         self.preprocessing = preprocessing
 
-        # the image^mask pair id, beware the id is the image file and the fitting mask might have a different file type
-        mask_stems = {os.path.splitext(mask_id)[0] for mask_id in os.listdir(masks_dir)} if masks_dir is not None else set()
-        self.ids = [img_id for img_id in os.listdir(images_dir)
-                    if os.path.splitext(img_id)[0] in mask_stems]
-
-        # convert str names to class values on masks
-        self.class_values = [self.CLASSES.index(cls.lower()) for cls in classes] if classes is not None else None
-
-        self.max_class_id = self.get_max_class_value() # cached value of the maximum class
-        print(f"Images loaded from {self.images_dir}")
-        if masks_dir is not None:
-            print(f"Greyscale masks loaded from {self.masks_dir}")
-        print(f"Dataset initialized with {len(self.ids)} items.")
-        #print(f"IDs in dataset: {self.ids}")
-
-
-
-    def __getitem__(self, idx):
+    def __getitem__(self, i):
         """
         retrieve an item by index.
         :param idx: index of the item to retrieve.
         :return: tuple (image, mask) where both are numpy arrays.
         """
-        if idx >= len(self.ids) or idx < 0:
-            raise IndexError(f"Index {idx} out of range for dataset with size {len(self.ids)}")
+        if i >= len(self.ids) or i < 0:
+            raise IndexError(f"Index {i} out of range for dataset with size {len(self.ids)}")
 
         # get image path
-        image_path = os.path.join(self.images_dir, self.ids[idx])
+        image_path = os.path.join(self.images_dir, self.ids[i])
 
         # find mask path with different file type
-        mask_stem = os.path.splitext(self.ids[idx])[0]
+        mask_stem = os.path.splitext(self.ids[i])[0]
         mask_path = os.path.normpath(os.path.join(self.masks_dir, f"{mask_stem}.png")) if self.masks_dir is not None else None
 
         # check if the mask exists
@@ -80,8 +63,8 @@ class CombustionChamberDataset(BaseDataset):
             sample = self.preprocessing(image=image)
             image = sample["image"]
 
-        if self.masks_dir:
-            mask = cv2.imread(mask_path, 0)
+        if self.masks_fps:
+            mask = cv2.imread(self.masks_fps[i], 0)
             masks = [(mask == v) for v in self.class_values]
             mask = np.stack(masks, axis=-1).astype("float")
             if self.augmentation:
@@ -92,7 +75,7 @@ class CombustionChamberDataset(BaseDataset):
                 image, mask = sample['image'], sample['mask']
             return image, mask
         else:
-            return image, np.zeros_like(image) # Return a dummy mask
+            return image, np.zeros(1) # Return a dummy mask with a small size
 
     def __len__(self):
         """

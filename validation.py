@@ -18,7 +18,6 @@ def main(model_path, dataset_dir):
     batch_size = 1  # Set batch size to 1 for validation
     mean = [0.485, 0.456, 0.406]  # Standard ImageNet mean
     std = [0.229, 0.224, 0.225]   # Standard ImageNet std
-    num_classes = 2 # Assuming 2 classes for now, can be an argument if needed
 
     # setup test run directories
     predicted_masks_dir = os.path.join(dataset_dir, "predicted_masks")
@@ -28,7 +27,6 @@ def main(model_path, dataset_dir):
     validation_dataset = CombustionChamberDataset(
         images_dir=images_dir,
         masks_dir=None,  # No masks for validation
-        classes=[str(i) for i in range(num_classes)],
         augmentation=get_validation_augmentation(mean=mean, std=std)
     )
     validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False)
