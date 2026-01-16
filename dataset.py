@@ -5,7 +5,14 @@ import numpy as np
 
 
 class CombustionChamberDataset(BaseDataset):
-    def __init__(self, images_dir, masks_dir, classes,  mean=None, std=None, augmentation=None):
+    def __init__(
+        self,
+        images_dir,
+        masks_dir=None,
+        classes=None,
+        augmentation=None,
+        preprocessing=None,
+    ):
         """
         Initialize the dataset with directory paths, class information, normalization parameters,
         and optional augmentation.
@@ -19,19 +26,21 @@ class CombustionChamberDataset(BaseDataset):
         self.images_dir = images_dir
         self.masks_dir = masks_dir
         self.classes = classes
-        self.mean = mean
-        self.std = std
         self.augmentation = augmentation
+        self.preprocessing = preprocessing
 
         # the image^mask pair id, beware the id is the image file and the fitting mask might have a different file type
-        mask_stems = {os.path.splitext(mask_id)[0] for mask_id in os.listdir(masks_dir)}
+        mask_stems = {os.path.splitext(mask_id)[0] for mask_id in os.listdir(masks_dir)} if masks_dir is not None else set()
         self.ids = [img_id for img_id in os.listdir(images_dir)
                     if os.path.splitext(img_id)[0] in mask_stems]
 
-        self.class_values = {i: i for i in range(len(classes))}
+        # convert str names to class values on masks
+        self.class_values = [self.CLASSES.index(cls.lower()) for cls in classes] if classes is not None else None
+
         self.max_class_id = self.get_max_class_value() # cached value of the maximum class
         print(f"Images loaded from {self.images_dir}")
-        print(f"Greyscale masks loaded from {self.masks_dir}")
+        if masks_dir is not None:
+            print(f"Greyscale masks loaded from {self.masks_dir}")
         print(f"Dataset initialized with {len(self.ids)} items.")
         #print(f"IDs in dataset: {self.ids}")
 
@@ -51,23 +60,39 @@ class CombustionChamberDataset(BaseDataset):
 
         # find mask path with different file type
         mask_stem = os.path.splitext(self.ids[idx])[0]
-        mask_path = os.path.normpath(os.path.join(self.masks_dir, f"{mask_stem}.png"))
+        mask_path = os.path.normpath(os.path.join(self.masks_dir, f"{mask_stem}.png")) if self.masks_dir is not None else None
 
         # check if the mask exists
-        if not os.path.exists(mask_path):
+        if mask_path is not None and not os.path.exists(mask_path):
             raise FileNotFoundError(f"Mask file not found for: {mask_stem}")
 
         #read image and mask
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        mask = cv2.imread(mask_path, 0)
-        mask = np.array(mask, dtype=np.uint8)
 
+        # apply augmentations
         if self.augmentation:
-            sample = self.augmentation(image=image, mask=mask)
-            image, mask = sample['image'], sample['mask']
-        image = image.transpose(2, 0, 1) # from HWC to CHW
-        return image, mask
+            sample = self.augmentation(image=image)
+            image = sample["image"]
+
+        # apply preprocessing
+        if self.preprocessing:
+            sample = self.preprocessing(image=image)
+            image = sample["image"]
+
+        if self.masks_dir:
+            mask = cv2.imread(mask_path, 0)
+            masks = [(mask == v) for v in self.class_values]
+            mask = np.stack(masks, axis=-1).astype("float")
+            if self.augmentation:
+                sample = self.augmentation(image=image, mask=mask)
+                image, mask = sample['image'], sample['mask']
+            if self.preprocessing:
+                sample = self.preprocessing(image=image, mask=mask)
+                image, mask = sample['image'], sample['mask']
+            return image, mask
+        else:
+            return image, np.zeros_like(image) # Return a dummy mask
 
     def __len__(self):
         """
@@ -87,8 +112,6 @@ class CombustionChamberDataset(BaseDataset):
             # replace the image extension with .png for mask path
             mask_stem = os.path.splitext(idx)[0]
             mask_path = os.path.join(self.masks_dir, f"{mask_stem}.png")  # masks are .pngs
-
-
 
             mask = cv2.imread(mask_path, 0)
             if mask is not None:
